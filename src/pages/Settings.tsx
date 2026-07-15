@@ -23,7 +23,7 @@ export function SettingsPage() {
       <div className="settings-row"><span><i><Database /></i><span><b>내 스티커</b><small>{stickers.length}개 · {format} 사용 중</small></span></span><HardDrive /></div>
       <button className="settings-row settings-row--danger" onClick={() => { if (stickers.length && confirm(`저장된 스티커 ${stickers.length}개를 모두 삭제할까요?`)) void Promise.all(stickers.map((s) => remove(s.id))) }}><span><i><Trash2 /></i><span><b>모든 스티커 삭제</b><small>이 작업은 되돌릴 수 없어요</small></span></span></button>
     </section>
-    <section className="settings-group"><h2>앱 정보</h2><div className="settings-row"><span><i><Smartphone /></i><span><b>현재 버전</b><small>중앙 물체 인식 누끼 엔진</small></span></span><b>1.1.0</b></div></section>
+    <section className="settings-group"><h2>앱 정보</h2><div className="settings-row"><span><i><Smartphone /></i><span><b>현재 버전</b><small>중앙 물체 정밀 누끼 엔진</small></span></span><b>1.1.1</b></div></section>
     <footer className="settings-footer">STICKERSHOT · MADE FOR LITTLE JOYS<br /><span>찍고, 모으고, 베어봐!</span></footer>
   </main>
 }

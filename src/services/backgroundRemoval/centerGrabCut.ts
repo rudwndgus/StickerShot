@@ -82,32 +82,46 @@ export async function removeBackgroundFromCenter(url: string, feather: number) {
   const source = cv.imread(work)
   const rgb = new cv.Mat()
   const mask = new cv.Mat(height, width, cv.CV_8UC1)
-  const backgroundModel = new cv.Mat()
-  const foregroundModel = new cv.Mat()
-  let binaryMat: any; let kernel: any
   try {
     cv.cvtColor(source, rgb, cv.COLOR_RGBA2RGB)
-    mask.data.fill(cv.GC_PR_BGD)
     const border = Math.max(5, Math.round(Math.min(width, height) * .035))
-    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
-      if (x < border || x >= width - border || y < border || y >= height - border) mask.data[y * width + x] = cv.GC_BGD
+    const center = new cv.Point(Math.round(width / 2), Math.round(height / 2))
+    const runPass = (radiusX: number, radiusY: number, iterations: number) => {
+      mask.data.fill(cv.GC_PR_BGD)
+      for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+        if (x < border || x >= width - border || y < border || y >= height - border) mask.data[y * width + x] = cv.GC_BGD
+      }
+      // A tight probable-foreground area avoids teaching GrabCut that the table,
+      // fabric or floor beneath a small object is part of that object.
+      const shortSide = Math.min(width, height)
+      cv.ellipse(mask, center, new cv.Size(Math.round(shortSide * radiusX), Math.round(shortSide * radiusY)), 0, 0, 360, new cv.Scalar(cv.GC_PR_FGD), -1)
+      cv.circle(mask, center, Math.max(4, Math.round(Math.min(width, height) * .022)), new cv.Scalar(cv.GC_FGD), -1)
+      const backgroundModel = new cv.Mat(); const foregroundModel = new cv.Mat()
+      const binaryMat = new cv.Mat(height, width, cv.CV_8UC1)
+      const kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(5, 5))
+      try {
+        cv.grabCut(rgb, mask, new cv.Rect(0, 0, 1, 1), backgroundModel, foregroundModel, iterations, cv.GC_INIT_WITH_MASK)
+        for (let i = 0; i < mask.data.length; i++) binaryMat.data[i] = (mask.data[i] === cv.GC_FGD || mask.data[i] === cv.GC_PR_FGD) ? 255 : 0
+        cv.morphologyEx(binaryMat, binaryMat, cv.MORPH_CLOSE, kernel)
+        cv.morphologyEx(binaryMat, binaryMat, cv.MORPH_OPEN, kernel)
+        return selectCenterComponent(binaryMat.data, width, height)
+      } finally {
+        backgroundModel.delete(); foregroundModel.delete(); binaryMat.delete(); kernel.delete()
+      }
     }
 
-    const center = new cv.Point(Math.round(width / 2), Math.round(height / 2))
-    cv.ellipse(mask, center, new cv.Size(Math.round(width * .28), Math.round(height * .32)), 0, 0, 360, new cv.Scalar(cv.GC_PR_FGD), -1)
-    cv.circle(mask, center, Math.max(5, Math.round(Math.min(width, height) * .035)), new cv.Scalar(cv.GC_FGD), -1)
-    cv.grabCut(rgb, mask, new cv.Rect(0, 0, 1, 1), backgroundModel, foregroundModel, 4, cv.GC_INIT_WITH_MASK)
-
-    binaryMat = new cv.Mat(height, width, cv.CV_8UC1)
-    for (let i = 0; i < mask.data.length; i++) binaryMat.data[i] = (mask.data[i] === cv.GC_FGD || mask.data[i] === cv.GC_PR_FGD) ? 255 : 0
-    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(5, 5))
-    cv.morphologyEx(binaryMat, binaryMat, cv.MORPH_CLOSE, kernel)
-    cv.morphologyEx(binaryMat, binaryMat, cv.MORPH_OPEN, kernel)
-
-    const centered = selectCenterComponent(binaryMat.data, width, height)
+    // The first pass covers a typical handheld object. If the mask leaks into a
+    // large surface, a second stricter pass is preferred when it remains valid.
+    let centered = runPass(.17, .20, 4)
     let count = 0; for (const value of centered) if (value) count++
-    const ratio = count / centered.length
-    if (ratio < .008 || ratio > .88) throw new Error('중앙 물체의 윤곽을 찾지 못했어요.')
+    let ratio = count / centered.length
+    if (ratio > .32) {
+      const strict = runPass(.09, .10, 5)
+      let strictCount = 0; for (const value of strict) if (value) strictCount++
+      const strictRatio = strictCount / strict.length
+      if (strictRatio >= .004 && strictRatio < ratio * .72) { centered = strict; count = strictCount; ratio = strictRatio }
+    }
+    if (ratio < .004 || ratio > .88) throw new Error('중앙 물체의 윤곽을 찾지 못했어요.')
 
     const maskCanvas = document.createElement('canvas'); maskCanvas.width = width; maskCanvas.height = height
     const maskContext = maskCanvas.getContext('2d')!
@@ -128,6 +142,6 @@ export async function removeBackgroundFromCenter(url: string, feather: number) {
     outputContext.filter = 'none'; outputContext.globalCompositeOperation = 'source-over'
     return output
   } finally {
-    source.delete(); rgb.delete(); mask.delete(); backgroundModel.delete(); foregroundModel.delete(); binaryMat?.delete(); kernel?.delete()
+    source.delete(); rgb.delete(); mask.delete()
   }
 }

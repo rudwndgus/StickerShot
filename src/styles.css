@@ -63,3 +63,13 @@ button, img { -webkit-user-select: none; user-select: none; -webkit-touch-callou
 .scan-target { position:absolute; z-index:3; left:50%; top:50%; width:66px; height:66px; transform:translate(-50%,-50%); border:2px solid var(--yellow); border-radius:50%; box-shadow:0 0 18px #ffe05a77; }
 .scan-target span { position:absolute; width:10px; height:10px; border-radius:50%; background:var(--yellow); left:26px; top:26px; box-shadow:0 0 0 5px #fff5; animation:pulse 1s infinite; }
 .scan-target small { position:absolute; top:75px; left:50%; transform:translateX(-50%); width:max-content; padding:5px 9px; border-radius:20px; background:#17171dcc; color:#fff; font-size:9px; font-weight:800; }
+
+/* Native-camera-like thirds grid: quiet lines and one small center plus. */
+.capture-guide { inset:9% 0 19%; border:0; border-radius:0; box-shadow:none; background:none; }
+.capture-guide:before,.capture-guide:after { content:''; position:absolute; inset:0; width:auto; height:auto; border:0; border-radius:0; opacity:.56; }
+.capture-guide:before { background:linear-gradient(to right,transparent calc(33.333% - .5px),#fff calc(33.333% - .5px),#fff calc(33.333% + .5px),transparent calc(33.333% + .5px),transparent calc(66.666% - .5px),#fff calc(66.666% - .5px),#fff calc(66.666% + .5px),transparent calc(66.666% + .5px)); }
+.capture-guide:after { background:linear-gradient(to bottom,transparent calc(33.333% - .5px),#fff calc(33.333% - .5px),#fff calc(33.333% + .5px),transparent calc(33.333% + .5px),transparent calc(66.666% - .5px),#fff calc(66.666% - .5px),#fff calc(66.666% + .5px),transparent calc(66.666% + .5px)); }
+.capture-guide>span { display:none; }
+.target-reticle { z-index:2; width:24px; height:24px; border:0; border-radius:0; box-shadow:0 1px 3px #0005; }
+.target-reticle:before { width:24px; height:1.5px; left:0; top:11px; background:#fff; }.target-reticle:after { width:1.5px; height:24px; left:11px; top:0; background:#fff; }
+.capture-guide div { top:18px; padding:7px 11px; border-radius:20px; background:#14141a7a; backdrop-filter:blur(5px); }
