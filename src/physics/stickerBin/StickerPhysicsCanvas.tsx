@@ -60,11 +60,15 @@ export function StickerPhysicsCanvas({ stickers, gravity, onLongPress, onActiveC
       canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       const thickness = 100
+      // Keep Matter's floor aligned with the visible top edge of the bin base.
+      // Otherwise stickers settle at the viewport bottom and disappear behind it.
+      const floorInset = Number.parseFloat(getComputedStyle(canvas).getPropertyValue('--bin-floor-visible-height')) || 54
+      const floorY = height - floorInset
       sideBoundaries.forEach((body) => Matter.Composite.remove(engine.world, body))
       if (topWall) Matter.Composite.remove(engine.world, topWall)
       topWall = null
       sideBoundaries = [
-        Matter.Bodies.rectangle(width / 2, height + thickness / 2, width + thickness * 2, thickness, { isStatic: true }),
+        Matter.Bodies.rectangle(width / 2, floorY + thickness / 2, width + thickness * 2, thickness, { isStatic: true }),
         Matter.Bodies.rectangle(-thickness / 2, height / 2, thickness, height * 3, { isStatic: true }),
         Matter.Bodies.rectangle(width + thickness / 2, height / 2, thickness, height * 3, { isStatic: true })
       ]
