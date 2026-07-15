@@ -28,7 +28,7 @@ export function StickerPhysicsCanvas({ stickers, gravity, onLongPress, onActiveC
     const canvas = canvasRef.current!
     const ctx = canvas.getContext('2d')!
     const engine = Matter.Engine.create({ enableSleeping: true })
-    engine.gravity.scale = .002
+    engine.gravity.scale = .00175
     const sprites: SpriteBody[] = []
     let frame = 0; let width = 0; let height = 0; let dpr = 1
     let drag: { body: Matter.Body; pointerId: number; lastX: number; lastY: number; lastTime: number; timer: number; moved: boolean } | null = null

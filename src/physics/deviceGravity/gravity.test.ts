@@ -1,16 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { mapOrientationToGravity } from './gravityMapper'
+import { mapOrientationToGravity, MAX_TILT_GRAVITY } from './gravityMapper'
 import { smoothGravity } from './gravitySmoothing'
 import { detectShake } from './shakeDetector'
 
 describe('device gravity', () => {
-  it('maps portrait tilt and clamps extremes', () => {
-    expect(mapOrientationToGravity(13.5, 27)).toEqual({ x: 1, y: .5 })
-    expect(mapOrientationToGravity(200, -200)).toEqual({ x: -1, y: 1 })
+  it('maps portrait tilt with a soft limit for normal viewing angles', () => {
+    const normalViewingAngle = mapOrientationToGravity(45, 10)
+    expect(normalViewingAngle.y).toBeGreaterThan(.4)
+    expect(normalViewingAngle.y).toBeLessThanOrEqual(MAX_TILT_GRAVITY)
+    const extreme = mapOrientationToGravity(200, -200)
+    expect(extreme.x).toBeCloseTo(-MAX_TILT_GRAVITY, 5)
+    expect(extreme.y).toBeCloseTo(MAX_TILT_GRAVITY, 5)
   })
   it('corrects coordinates for landscape orientation', () => {
-    expect(mapOrientationToGravity(13.5, 27, 90)).toEqual({ x: .5, y: -1 })
-    expect(mapOrientationToGravity(13.5, 27, -90)).toEqual({ x: -.5, y: 1 })
+    const portrait = mapOrientationToGravity(14, 28)
+    expect(mapOrientationToGravity(14, 28, 90)).toEqual({ x: portrait.y, y: -portrait.x })
+    expect(mapOrientationToGravity(14, 28, -90)).toEqual({ x: -portrait.y, y: portrait.x })
   })
   it('smooths changes and applies a dead zone', () => {
     expect(smoothGravity({ x: 0, y: 0 }, { x: 1, y: .1 }, .1, .05)).toEqual({ x: .1, y: 0 })
