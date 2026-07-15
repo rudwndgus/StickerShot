@@ -2,7 +2,10 @@ import { useEffect, useRef } from 'react'
 import Matter from 'matter-js'
 import type { StickerRecord, GravityVector } from '../../types'
 
-export interface PhysicsCanvasHandle { reset: () => void }
+export interface PhysicsCanvasHandle {
+  reset: () => void
+  shake: (strength: number, direction: GravityVector) => void
+}
 
 interface Props {
   stickers: StickerRecord[]
@@ -25,7 +28,7 @@ export function StickerPhysicsCanvas({ stickers, gravity, onLongPress, onActiveC
     const canvas = canvasRef.current!
     const ctx = canvas.getContext('2d')!
     const engine = Matter.Engine.create({ enableSleeping: true })
-    engine.gravity.scale = .0018
+    engine.gravity.scale = .002
     const sprites: SpriteBody[] = []
     let frame = 0; let width = 0; let height = 0; let dpr = 1
     let drag: { body: Matter.Body; pointerId: number; lastX: number; lastY: number; lastTime: number; timer: number; moved: boolean } | null = null
@@ -87,7 +90,7 @@ export function StickerPhysicsCanvas({ stickers, gravity, onLongPress, onActiveC
         const max = Math.max(58, Math.min(104, width / 3.5)); const ratio = image.naturalWidth / image.naturalHeight
         const w = ratio >= 1 ? max : max * ratio; const h = ratio >= 1 ? max / ratio : max
         const body = Matter.Bodies.rectangle(36 + Math.random() * Math.max(20, width - 72), -h * .28, w * .78, h * .78, {
-          restitution: .68, friction: .28, frictionAir: .012, density: .0015, angle: (Math.random() - .5) * .6,
+          restitution: .76, friction: .19, frictionStatic: .22, frictionAir: .006, density: .00115, angle: (Math.random() - .5) * .6,
           chamfer: { radius: Math.min(w, h) * .18 }, sleepThreshold: 90
         })
         const timer = window.setTimeout(() => {
@@ -140,19 +143,34 @@ export function StickerPhysicsCanvas({ stickers, gravity, onLongPress, onActiveC
       frame = requestAnimationFrame(render)
     }
     frame = requestAnimationFrame(render)
-    if (apiRef) apiRef.current = { reset: () => {
-      openTop()
-      sprites.forEach(({ body, height: h }, index) => {
-        Matter.Sleeping.set(body, false)
-        const timer = window.setTimeout(() => {
-          Matter.Body.setPosition(body, { x: 40 + Math.random() * Math.max(10, width - 80), y: -h * .28 })
-          Matter.Body.setVelocity(body, { x: (Math.random() - .5) * 1.5, y: 1.4 + Math.random() * 1.5 })
-          Matter.Body.setAngularVelocity(body, (Math.random() - .5) * .07)
-        }, index * 65)
-        pourTimers.push(timer)
-      })
-      closeTopAfter(sprites.length * 65 + 1000)
-    } }
+    if (apiRef) apiRef.current = {
+      reset: () => {
+        openTop()
+        sprites.forEach(({ body, height: h }, index) => {
+          Matter.Sleeping.set(body, false)
+          const timer = window.setTimeout(() => {
+            Matter.Body.setPosition(body, { x: 40 + Math.random() * Math.max(10, width - 80), y: -h * .28 })
+            Matter.Body.setVelocity(body, { x: (Math.random() - .5) * 1.5, y: 1.4 + Math.random() * 1.5 })
+            Matter.Body.setAngularVelocity(body, (Math.random() - .5) * .07)
+          }, index * 65)
+          pourTimers.push(timer)
+        })
+        closeTopAfter(sprites.length * 65 + 1000)
+      },
+      shake: (strength, direction) => {
+        const power = Math.max(.75, Math.min(2.8, strength))
+        sprites.forEach(({ body }, index) => {
+          Matter.Sleeping.set(body, false)
+          const scatter = (Math.random() - .5) * 13 * power
+          const lift = (5 + Math.random() * 7) * power
+          Matter.Body.setVelocity(body, {
+            x: Math.max(-25, Math.min(25, body.velocity.x + direction.x * 9 * power + scatter)),
+            y: Math.max(-29, Math.min(18, body.velocity.y + direction.y * 6 * power - lift))
+          })
+          Matter.Body.setAngularVelocity(body, body.angularVelocity + (Math.random() - .5) * .34 * power + (index % 2 ? .04 : -.04))
+        })
+      }
+    }
     return () => {
       cancelAnimationFrame(frame); ro.disconnect(); canvas.removeEventListener('pointerdown', down); canvas.removeEventListener('pointermove', move); canvas.removeEventListener('pointerup', up); canvas.removeEventListener('pointercancel', up)
       pourTimers.forEach(window.clearTimeout); window.clearTimeout(topTimer)

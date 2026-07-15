@@ -7,6 +7,7 @@ import { StickerPhysicsCanvas, type PhysicsCanvasHandle } from '../physics/stick
 import { mapOrientationToGravity } from '../physics/deviceGravity/gravityMapper'
 import { smoothGravity } from '../physics/deviceGravity/gravitySmoothing'
 import { requestOrientationPermission } from '../physics/deviceGravity/deviceOrientationPermission'
+import { detectShake, type MotionSample } from '../physics/deviceGravity/shakeDetector'
 import type { GravityVector, StickerRecord } from '../types'
 
 export function StickerBin() {
@@ -20,6 +21,8 @@ export function StickerBin() {
   const [name, setName] = useState('')
   const physics = useRef<PhysicsCanvasHandle | null>(null)
   const gravityRef = useRef(gravity); gravityRef.current = gravity
+  const lastMotion = useRef<MotionSample | null>(null)
+  const lastShakeAt = useRef(0)
 
   useEffect(() => {
     if (!tiltEnabled) return
@@ -28,8 +31,25 @@ export function StickerBin() {
       const mapped = mapOrientationToGravity(event.beta ?? 0, event.gamma ?? 0, angle)
       setGravity(smoothGravity(gravityRef.current, mapped))
     }
+    const motionListener = (event: DeviceMotionEvent) => {
+      const acceleration = event.accelerationIncludingGravity
+      if (acceleration?.x == null || acceleration.y == null || acceleration.z == null) return
+      const current = { x: acceleration.x, y: acceleration.y, z: acceleration.z }
+      const shake = detectShake(lastMotion.current, current)
+      lastMotion.current = current
+      const now = performance.now()
+      if (shake && now - lastShakeAt.current > 115) {
+        lastShakeAt.current = now
+        physics.current?.shake(shake.strength, shake.direction)
+      }
+    }
     window.addEventListener('deviceorientation', listener)
-    return () => window.removeEventListener('deviceorientation', listener)
+    window.addEventListener('devicemotion', motionListener)
+    return () => {
+      window.removeEventListener('deviceorientation', listener)
+      window.removeEventListener('devicemotion', motionListener)
+      lastMotion.current = null
+    }
   }, [tiltEnabled])
 
   const enableTilt = async () => {
@@ -52,12 +72,12 @@ export function StickerBin() {
     </div>
     {stickers.length ? <StickerPhysicsCanvas stickers={stickers} gravity={gravity} onLongPress={selectSticker} onActiveCount={setActiveCount} apiRef={physics} /> : <div className="bin-empty"><EmptySticker /><h1>스티커 통이 텅 비었어요</h1><p>물건을 찍어 첫 스티커를 만들어 보세요.</p><button className="btn btn--ink" onClick={() => navigate('/capture')}><Camera /> 스티커 만들기</button></div>}
     {stickers.length > activeCount && <div className="active-count">성능을 위해 최근 {activeCount}개를 보여주고 있어요</div>}
-    <div className="bin-floor"><span>화면을 기울이거나 스티커를 던져보세요!</span></div>
+    <div className="bin-floor"><span>살짝 기울이고, 세게 흔들어 보세요!</span></div>
 
     {showPermission && <div className="modal-backdrop"><section className="permission-card">
       <button className="modal-close" onClick={() => { localStorage.setItem('stickershot-tilt-seen', '1'); setShowPermission(false) }}><X /></button>
-      <div className="permission-card__icon"><Compass /></div><small>REAL PHYSICS</small><h2>기울기 효과를 켤까요?</h2><p>핸드폰을 기울이면 스티커들이<br />통 안에서 데굴데굴 움직여요.</p>
-      <button className="btn btn--primary" onClick={() => void enableTilt()}><Compass /> 기울기 효과 켜기</button><button className="text-btn" onClick={() => setShowPermission(false)}>나중에</button>
+      <div className="permission-card__icon"><Compass /></div><small>REAL PHYSICS</small><h2>기울기·흔들기를 켤까요?</h2><p>살짝 기울이면 데굴데굴,<br />세게 흔들면 스티커들이 마구 튀어요!</p>
+      <button className="btn btn--primary" onClick={() => void enableTilt()}><Compass /> 움직임 효과 켜기</button><button className="text-btn" onClick={() => setShowPermission(false)}>나중에</button>
     </section></div>}
 
     {selected && <div className="modal-backdrop" onClick={() => setSelected(null)}><section className="detail-sheet" onClick={(e) => e.stopPropagation()}>
