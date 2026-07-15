@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { selectCenterComponent } from './centerGrabCut'
+import { isLikelySkinPixel, selectCenterComponent } from './centerGrabCut'
 
 describe('center-target foreground selection', () => {
   it('keeps the object touching the center and rejects a separate object', () => {
@@ -16,5 +16,11 @@ describe('center-target foreground selection', () => {
     const width = 7; const height = 7; const mask = new Uint8Array(width * height)
     mask[3 * width + 4] = 1; mask[3 * width + 5] = 1
     expect(selectCenterComponent(mask, width, height)[3 * width + 4]).toBe(255)
+  })
+
+  it('recognises varied skin tones without classifying a blue object as skin', () => {
+    expect(isLikelySkinPixel(232, 177, 142)).toBe(true)
+    expect(isLikelySkinPixel(116, 70, 52)).toBe(true)
+    expect(isLikelySkinPixel(20, 145, 170)).toBe(false)
   })
 })

@@ -6,6 +6,32 @@ const OUTPUT_MAX_SIDE = 1280
 type OpenCv = Record<string, any>
 let openCvPromise: Promise<OpenCv> | undefined
 
+/** Conservative RGB + YCbCr skin classifier used only when skin occupies a
+ * meaningful ring around the center object. The center seed always wins, so a
+ * skin-coloured object under the reticle is not discarded outright. */
+export function isLikelySkinPixel(r: number, g: number, b: number) {
+  const max = Math.max(r, g, b); const min = Math.min(r, g, b)
+  const cb = 128 - .168736 * r - .331264 * g + .5 * b
+  const cr = 128 + .5 * r - .418688 * g - .081312 * b
+  const rgbShape = r > 45 && g > 22 && b > 12 && max - min > 12 && r > g && r > b && Math.abs(r - g) > 7
+  return rgbShape && cb >= 75 && cb <= 135 && cr >= 132 && cr <= 180
+}
+
+function hasHandAroundCenter(rgba: Uint8Array, width: number, height: number) {
+  const cx = width / 2; const cy = height / 2; const shortSide = Math.min(width, height)
+  const inner = shortSide * .075; const outer = shortSide * .34
+  let samples = 0; let skin = 0
+  for (let y = Math.max(0, Math.floor(cy - outer)); y <= Math.min(height - 1, Math.ceil(cy + outer)); y += 2) {
+    for (let x = Math.max(0, Math.floor(cx - outer)); x <= Math.min(width - 1, Math.ceil(cx + outer)); x += 2) {
+      const distance = Math.hypot(x - cx, y - cy)
+      if (distance < inner || distance > outer) continue
+      const offset = (y * width + x) * 4; samples++
+      if (isLikelySkinPixel(rgba[offset], rgba[offset + 1], rgba[offset + 2])) skin++
+    }
+  }
+  return samples > 0 && skin / samples > .16
+}
+
 async function getOpenCv(): Promise<OpenCv> {
   if (openCvPromise) return openCvPromise
   openCvPromise = import('@techstark/opencv-js').then(async ({ default: cvModule }) => {
@@ -86,6 +112,7 @@ export async function removeBackgroundFromCenter(url: string, feather: number) {
     cv.cvtColor(source, rgb, cv.COLOR_RGBA2RGB)
     const border = Math.max(5, Math.round(Math.min(width, height) * .035))
     const center = new cv.Point(Math.round(width / 2), Math.round(height / 2))
+    const handAware = hasHandAroundCenter(source.data, width, height)
     const runPass = (radiusX: number, radiusY: number, iterations: number) => {
       mask.data.fill(cv.GC_PR_BGD)
       for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
@@ -95,7 +122,21 @@ export async function removeBackgroundFromCenter(url: string, feather: number) {
       // fabric or floor beneath a small object is part of that object.
       const shortSide = Math.min(width, height)
       cv.ellipse(mask, center, new cv.Size(Math.round(shortSide * radiusX), Math.round(shortSide * radiusY)), 0, 0, 360, new cv.Scalar(cv.GC_PR_FGD), -1)
-      cv.circle(mask, center, Math.max(4, Math.round(Math.min(width, height) * .022)), new cv.Scalar(cv.GC_FGD), -1)
+      const seedRadius = Math.max(4, Math.round(shortSide * .022))
+      if (handAware) {
+        const limitX = Math.round(shortSide * radiusX); const limitY = Math.round(shortSide * radiusY)
+        for (let y = Math.max(0, center.y - limitY); y <= Math.min(height - 1, center.y + limitY); y++) {
+          for (let x = Math.max(0, center.x - limitX); x <= Math.min(width - 1, center.x + limitX); x++) {
+            const dx = x - center.x; const dy = y - center.y
+            if ((dx * dx) / (limitX * limitX) + (dy * dy) / (limitY * limitY) > 1 || Math.hypot(dx, dy) <= seedRadius * 2.2) continue
+            const pixel = (y * width + x) * 4
+            if (isLikelySkinPixel(source.data[pixel], source.data[pixel + 1], source.data[pixel + 2])) {
+              mask.data[y * width + x] = Math.hypot(dx, dy) > shortSide * .13 ? cv.GC_BGD : cv.GC_PR_BGD
+            }
+          }
+        }
+      }
+      cv.circle(mask, center, seedRadius, new cv.Scalar(cv.GC_FGD), -1)
       const backgroundModel = new cv.Mat(); const foregroundModel = new cv.Mat()
       const binaryMat = new cv.Mat(height, width, cv.CV_8UC1)
       const kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(5, 5))

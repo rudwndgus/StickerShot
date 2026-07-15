@@ -82,3 +82,28 @@ button, img { -webkit-user-select: none; user-select: none; -webkit-touch-callou
 .app-header--brand .count-chip { white-space:nowrap; }
 @media(max-width:390px){.app-header--brand .logo--compact{gap:5px}.app-header--brand .logo--compact .logo__mark{width:31px;height:29px}.app-header--brand .count-chip{padding:6px 7px;font-size:11px}.app-header--brand .app-header__side--right{gap:5px}}
 @media(max-width:430px){.app-header--brand .logo--compact{white-space:nowrap}.app-header--brand .count-chip{font-size:0;gap:0;padding:5px}.app-header--brand .count-chip span{font-size:11px}.app-header--brand .app-header__side--right{gap:5px}}
+
+/* The real processed PNG peels away from the source photo before the editor opens. */
+.scan-page { transition:background .65s ease; }
+.scan-page--peeling { background:#fff8ec; }
+.scan-image-wrap { transition:border-color .45s ease,background .45s ease,box-shadow .45s ease; }
+.scan-image-wrap--peeling { background:#fff8ec; border-color:#fff8ec; box-shadow:0 12px 35px #0002; }
+.scan-source-photo { transform:scale(1); transform-origin:center; }
+.scan-image-wrap--peeling .scan-source-photo { animation:source-photo-vanish 1.55s .18s cubic-bezier(.4,0,.2,1) forwards; }
+.peel-sticker { position:absolute; z-index:5; inset:0; display:grid; place-items:center; opacity:0; transform:perspective(800px) rotateY(0) rotate(0) scale(.92); transform-origin:18% 78%; pointer-events:none; }
+.peel-sticker img { width:auto; height:auto; max-width:68%; max-height:70%; object-fit:contain; filter:drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff) drop-shadow(0 15px 12px #0005); }
+.scan-page--peeling .peel-sticker { animation:peel-from-photo 1.8s cubic-bezier(.2,.82,.2,1) forwards; }
+.peel-sticker:before { content:''; position:absolute; width:42%; aspect-ratio:1; border:2px solid #ffe05a; border-radius:50%; opacity:0; transform:scale(.5); }
+.scan-page--peeling .peel-sticker:before { animation:peel-flash .85s .55s ease-out both; }
+.peel-curl { position:absolute; z-index:6; right:17%; bottom:19%; width:34px; height:34px; background:linear-gradient(135deg,#ddd 0 46%,#fff 48%); clip-path:polygon(0 0,100% 100%,0 100%); filter:drop-shadow(3px 3px 2px #0004); opacity:0; }
+.scan-page--peeling .peel-curl { animation:curl-show .65s .18s ease-out both; }
+.peel-sticker>i { position:absolute; left:13%; top:20%; padding:5px 9px; color:var(--ink); background:var(--yellow); border:2px solid var(--ink); border-radius:8px; font:900 10px 'DM Sans'; font-style:normal; opacity:0; transform:rotate(-9deg) scale(.5); }
+.scan-page--peeling .peel-sticker>i { animation:peel-label .55s .72s cubic-bezier(.2,1.5,.3,1) both; }
+.scan-page--peeling .scan-line,.scan-page--peeling .scan-target,.scan-page--peeling .focus-corner,.scan-page--peeling .scan-dots { transition:opacity .25s; opacity:0; }
+.scan-status--peeling { color:var(--ink); }.scan-status--peeling p { color:#777; }.scan-status--peeling .scan-progress { opacity:0; transition:opacity .2s; }
+@keyframes source-photo-vanish { 0%{opacity:1;filter:brightness(.72);transform:scale(1)} 45%{opacity:.48;filter:brightness(1.15) saturate(.7) blur(4px);transform:scale(1.025)} 100%{opacity:0;filter:brightness(1.7) saturate(0) blur(14px);transform:scale(1.08)} }
+@keyframes peel-from-photo { 0%{opacity:0;transform:perspective(800px) rotateY(0) rotate(0) translateY(0) scale(.92)} 12%{opacity:1} 48%{opacity:1;transform:perspective(800px) rotateY(-18deg) rotate(-5deg) translateY(-18px) scale(1.055)} 72%{transform:perspective(800px) rotateY(4deg) rotate(2deg) translateY(-8px) scale(1.02)} 100%{opacity:1;transform:perspective(800px) rotateY(0) rotate(0) translateY(0) scale(1)} }
+@keyframes peel-flash { 0%{opacity:.9;transform:scale(.4)} 100%{opacity:0;transform:scale(2.1)} }
+@keyframes curl-show { 0%{opacity:0;transform:translate(-20px,-20px) rotate(-22deg) scale(.35)} 45%{opacity:.95} 100%{opacity:0;transform:translate(10px,9px) rotate(8deg) scale(1.15)} }
+@keyframes peel-label { to{opacity:1;transform:rotate(-9deg) scale(1)} }
+@media(prefers-reduced-motion:reduce){.scan-image-wrap--peeling .scan-source-photo{animation-duration:.35s}.scan-page--peeling .peel-sticker{animation-duration:.5s}.scan-page--peeling .peel-curl,.scan-page--peeling .peel-sticker:before{display:none}}
