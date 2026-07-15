@@ -30,38 +30,73 @@ export function StickerPhysicsCanvas({ stickers, gravity, onLongPress, onActiveC
     let frame = 0; let width = 0; let height = 0; let dpr = 1
     let drag: { body: Matter.Body; pointerId: number; lastX: number; lastY: number; lastTime: number; timer: number; moved: boolean } | null = null
     const urls: string[] = []
+    const pourTimers: number[] = []
+    let topTimer = 0
+    let topClosed = false
+    let topWall: Matter.Body | null = null
+    let sideBoundaries: Matter.Body[] = []
+
+    const addTopWall = () => {
+      if (topWall || !width) return
+      const thickness = 100
+      topWall = Matter.Bodies.rectangle(width / 2, -thickness / 2, width + thickness * 2, thickness, { isStatic: true })
+      Matter.Composite.add(engine.world, topWall)
+      topClosed = true
+    }
+
+    const openTop = () => {
+      window.clearTimeout(topTimer)
+      if (topWall) Matter.Composite.remove(engine.world, topWall)
+      topWall = null; topClosed = false
+    }
+
+    const closeTopAfter = (delay: number) => {
+      window.clearTimeout(topTimer)
+      topTimer = window.setTimeout(addTopWall, delay)
+    }
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect(); width = rect.width; height = rect.height; dpr = Math.min(devicePixelRatio || 1, 2)
       canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       const thickness = 100
-      Matter.Composite.remove(engine.world, Matter.Composite.allBodies(engine.world).filter((b) => b.isStatic))
-      Matter.Composite.add(engine.world, [
+      sideBoundaries.forEach((body) => Matter.Composite.remove(engine.world, body))
+      if (topWall) Matter.Composite.remove(engine.world, topWall)
+      topWall = null
+      sideBoundaries = [
         Matter.Bodies.rectangle(width / 2, height + thickness / 2, width + thickness * 2, thickness, { isStatic: true }),
         Matter.Bodies.rectangle(-thickness / 2, height / 2, thickness, height * 3, { isStatic: true }),
-        Matter.Bodies.rectangle(width + thickness / 2, height / 2, thickness, height * 3, { isStatic: true }),
-        Matter.Bodies.rectangle(width / 2, -thickness / 2, width + thickness * 2, thickness, { isStatic: true })
-      ])
+        Matter.Bodies.rectangle(width + thickness / 2, height / 2, thickness, height * 3, { isStatic: true })
+      ]
+      Matter.Composite.add(engine.world, sideBoundaries)
+      if (topClosed) addTopWall()
     }
     resize()
     const ro = new ResizeObserver(resize); ro.observe(canvas)
 
     const selected = stickers.slice(0, 22)
     onActiveCount?.(selected.length)
+    let loadedCount = 0
     selected.forEach((sticker, index) => {
       const image = new Image(); const url = URL.createObjectURL(sticker.thumbnail); urls.push(url)
-      image.src = url
       image.onload = () => {
         const max = Math.max(58, Math.min(104, width / 3.5)); const ratio = image.naturalWidth / image.naturalHeight
         const w = ratio >= 1 ? max : max * ratio; const h = ratio >= 1 ? max / ratio : max
-        const body = Matter.Bodies.rectangle(36 + Math.random() * Math.max(20, width - 72), -70 - index * 28, w * .78, h * .78, {
+        const body = Matter.Bodies.rectangle(36 + Math.random() * Math.max(20, width - 72), -h * .28, w * .78, h * .78, {
           restitution: .68, friction: .28, frictionAir: .012, density: .0015, angle: (Math.random() - .5) * .6,
           chamfer: { radius: Math.min(w, h) * .18 }, sleepThreshold: 90
         })
-        Matter.Body.setAngularVelocity(body, (Math.random() - .5) * .05)
-        sprites.push({ body, sticker, image, width: w, height: h }); Matter.Composite.add(engine.world, body)
+        const timer = window.setTimeout(() => {
+          Matter.Body.setVelocity(body, { x: (Math.random() - .5) * 1.4, y: 1.2 + Math.random() * 1.6 })
+          Matter.Body.setAngularVelocity(body, (Math.random() - .5) * .065)
+          sprites.push({ body, sticker, image, width: w, height: h }); Matter.Composite.add(engine.world, body)
+        }, index * 85)
+        pourTimers.push(timer)
+        loadedCount++
+        if (loadedCount === selected.length) closeTopAfter(selected.length * 85 + 1100)
       }
+      image.onerror = () => { loadedCount++; if (loadedCount === selected.length) closeTopAfter(selected.length * 85 + 1100) }
+      image.src = url
     })
 
     const pointer = (event: PointerEvent) => {
@@ -101,12 +136,22 @@ export function StickerPhysicsCanvas({ stickers, gravity, onLongPress, onActiveC
       frame = requestAnimationFrame(render)
     }
     frame = requestAnimationFrame(render)
-    if (apiRef) apiRef.current = { reset: () => sprites.forEach(({ body }, index) => {
-      Matter.Body.setPosition(body, { x: 40 + Math.random() * Math.max(10, width - 80), y: -40 - index * 20 })
-      Matter.Body.setVelocity(body, { x: 0, y: 0 })
-    }) }
+    if (apiRef) apiRef.current = { reset: () => {
+      openTop()
+      sprites.forEach(({ body, height: h }, index) => {
+        Matter.Sleeping.set(body, false)
+        const timer = window.setTimeout(() => {
+          Matter.Body.setPosition(body, { x: 40 + Math.random() * Math.max(10, width - 80), y: -h * .28 })
+          Matter.Body.setVelocity(body, { x: (Math.random() - .5) * 1.5, y: 1.4 + Math.random() * 1.5 })
+          Matter.Body.setAngularVelocity(body, (Math.random() - .5) * .07)
+        }, index * 65)
+        pourTimers.push(timer)
+      })
+      closeTopAfter(sprites.length * 65 + 1000)
+    } }
     return () => {
       cancelAnimationFrame(frame); ro.disconnect(); canvas.removeEventListener('pointerdown', down); canvas.removeEventListener('pointermove', move); canvas.removeEventListener('pointerup', up); canvas.removeEventListener('pointercancel', up)
+      pourTimers.forEach(window.clearTimeout); window.clearTimeout(topTimer)
       Matter.World.clear(engine.world, false); Matter.Engine.clear(engine); urls.forEach(URL.revokeObjectURL); if (apiRef) apiRef.current = null
     }
   }, [stickers, onActiveCount, apiRef])

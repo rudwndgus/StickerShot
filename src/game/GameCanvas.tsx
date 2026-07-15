@@ -32,7 +32,7 @@ export function GameCanvas({ stickers, running, onSlice }: Props) {
   const runningRef = useRef(running); runningRef.current = running
   useEffect(() => {
     const canvas = canvasRef.current!; const ctx = canvas.getContext('2d')!
-    const engine = Matter.Engine.create(); engine.gravity.y = 1; engine.gravity.scale = .00082
+    const engine = Matter.Engine.create(); engine.gravity.y = 1; engine.gravity.scale = .00094
     let width = 0; let height = 0; let dpr = 1; let frame = 0; let last = performance.now(); let spawnAt = 0
     const items: GameItem[] = []; const urls: string[] = []
     const textures: Array<{ sticker: StickerRecord; image: HTMLImageElement }> = []
@@ -56,9 +56,9 @@ export function GameCanvas({ stickers, running, onSlice }: Props) {
       const w = ratio >= 1 ? max : max * ratio; const h = ratio >= 1 ? max / ratio : max
       const fromLeft = Math.random() < .5; const x = fromLeft ? 28 + Math.random() * width * .31 : width * .67 + Math.random() * width * .3
       const body = Matter.Bodies.rectangle(x, height + h * .72, w * .7, h * .7, {
-        frictionAir: .003, angle: (Math.random() - .5) * .36, collisionFilter: { mask: 0 }
+        frictionAir: .004, angle: (Math.random() - .5) * .36, collisionFilter: { mask: 0 }
       })
-      Matter.Body.setVelocity(body, { x: fromLeft ? 1.5 + Math.random() * 2.2 : -1.5 - Math.random() * 2.2, y: -19.5 - Math.random() * 3.5 })
+      Matter.Body.setVelocity(body, { x: fromLeft ? 1.5 + Math.random() * 2.2 : -1.5 - Math.random() * 2.2, y: -18.5 - Math.random() * 2.2 })
       Matter.Body.setAngularVelocity(body, (Math.random() - .5) * .085)
       Matter.Composite.add(engine.world, body); items.push({ body, image, sticker, width: w, height: h, sliced: false, createdAt: performance.now(), alpha: 1 })
     }
