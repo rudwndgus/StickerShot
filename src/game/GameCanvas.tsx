@@ -11,7 +11,7 @@ interface Props {
 
 interface GameItem {
   body: Matter.Body
-  image: HTMLImageElement
+  image: CanvasImageSource
   sticker: StickerRecord
   width: number
   height: number
@@ -32,28 +32,35 @@ export function GameCanvas({ stickers, running, onSlice }: Props) {
   const runningRef = useRef(running); runningRef.current = running
   useEffect(() => {
     const canvas = canvasRef.current!; const ctx = canvas.getContext('2d')!
-    const engine = Matter.Engine.create(); engine.gravity.y = 1; engine.gravity.scale = .00105
+    const engine = Matter.Engine.create(); engine.gravity.y = 1; engine.gravity.scale = .00082
     let width = 0; let height = 0; let dpr = 1; let frame = 0; let last = performance.now(); let spawnAt = 0
     const items: GameItem[] = []; const urls: string[] = []
+    const textures: Array<{ sticker: StickerRecord; image: HTMLImageElement }> = []
     let trail: Array<Point & { at: number }> = []; let pointerDown = false
     const resize = () => { const rect = canvas.getBoundingClientRect(); width = rect.width; height = rect.height; dpr = Math.min(devicePixelRatio || 1, 2); canvas.width = width * dpr; canvas.height = height * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0) }
     resize(); const ro = new ResizeObserver(resize); ro.observe(canvas)
-    const sources = stickers.filter((s) => s.gameEnabled)
+    const sources = stickers.filter((s) => s.gameEnabled).slice(0, 24)
     const fallback: StickerRecord = { id: 'sample', name: '별콩이', createdAt: 0, image: new Blob(), thumbnail: new Blob(), originalWidth: 220, originalHeight: 190, storedBytes: 0, outline: 'classic', gameEnabled: true, slicedCount: 0, lastUsedAt: 0 }
 
-    const spawn = async () => {
-      const sticker = sources.length ? sources[Math.floor(Math.random() * sources.length)] : fallback
+    const textureSources = sources.length ? sources : [fallback]
+    textureSources.forEach((sticker) => {
       const url = sticker.id === 'sample' ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(sampleSvg)}` : URL.createObjectURL(sticker.thumbnail)
       if (sticker.id !== 'sample') urls.push(url)
-      try {
-        const image = await imageFromUrl(url); const max = 90 + Math.random() * 35; const ratio = image.naturalWidth / image.naturalHeight
-        const w = ratio >= 1 ? max : max * ratio; const h = ratio >= 1 ? max / ratio : max
-        const fromLeft = Math.random() < .5; const x = fromLeft ? 34 + Math.random() * width * .27 : width * .7 + Math.random() * width * .26
-        const body = Matter.Bodies.rectangle(x, height + h, w * .72, h * .72, { frictionAir: .006, restitution: .5, angle: (Math.random() - .5) * .4 })
-        Matter.Body.setVelocity(body, { x: fromLeft ? 2 + Math.random() * 2.5 : -2 - Math.random() * 2.5, y: -16 - Math.random() * 5 })
-        Matter.Body.setAngularVelocity(body, (Math.random() - .5) * .13)
-        Matter.Composite.add(engine.world, body); items.push({ body, image, sticker, width: w, height: h, sliced: false, createdAt: performance.now(), alpha: 1 })
-      } catch { /* skip a corrupt texture without stopping the game */ }
+      void imageFromUrl(url).then((image) => textures.push({ sticker, image })).catch(() => undefined)
+    })
+
+    const spawn = () => {
+      if (!textures.length) return
+      const { sticker, image } = textures[Math.floor(Math.random() * textures.length)]
+      const max = 82 + Math.random() * 34; const ratio = image.naturalWidth / image.naturalHeight
+      const w = ratio >= 1 ? max : max * ratio; const h = ratio >= 1 ? max / ratio : max
+      const fromLeft = Math.random() < .5; const x = fromLeft ? 28 + Math.random() * width * .31 : width * .67 + Math.random() * width * .3
+      const body = Matter.Bodies.rectangle(x, height + h * .72, w * .7, h * .7, {
+        frictionAir: .003, angle: (Math.random() - .5) * .36, collisionFilter: { mask: 0 }
+      })
+      Matter.Body.setVelocity(body, { x: fromLeft ? 1.5 + Math.random() * 2.2 : -1.5 - Math.random() * 2.2, y: -19.5 - Math.random() * 3.5 })
+      Matter.Body.setAngularVelocity(body, (Math.random() - .5) * .085)
+      Matter.Composite.add(engine.world, body); items.push({ body, image, sticker, width: w, height: h, sliced: false, createdAt: performance.now(), alpha: 1 })
     }
 
     const splitImage = (item: GameItem, a: Point, b: Point) => {
@@ -62,19 +69,23 @@ export function GameCanvas({ stickers, running, onSlice }: Props) {
       const W = Math.max(2, Math.round(item.width)); const H = Math.max(2, Math.round(item.height))
       const dx = localB.x - localA.x; const dy = localB.y - localA.y; const length = Math.hypot(dx, dy) || 1
       const nx = -dy / length; const ny = dx / length
-      const makeHalf = async (side: number) => {
+      const makeHalf = (side: number) => {
         const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d')!
         const ax = localA.x + W / 2; const ay = localA.y + H / 2; const bx = localB.x + W / 2; const by = localB.y + H / 2
         x.beginPath(); x.moveTo(ax, ay); x.lineTo(bx, by); x.lineTo(bx + nx * side * 1000, by + ny * side * 1000); x.lineTo(ax + nx * side * 1000, ay + ny * side * 1000); x.closePath(); x.clip()
         x.drawImage(item.image, 0, 0, W, H)
-        const image = await imageFromUrl(c.toDataURL('image/png'))
-        const body = Matter.Bodies.rectangle(item.body.position.x + nx * side * 4, item.body.position.y + ny * side * 4, item.width * .66, item.height * .66, { frictionAir: .008, angle: item.body.angle })
-        Matter.Body.setVelocity(body, { x: item.body.velocity.x + nx * side * 3.5, y: item.body.velocity.y + ny * side * 3.5 })
-        Matter.Body.setAngularVelocity(body, item.body.angularVelocity + side * .08)
-        Matter.Composite.add(engine.world, body); items.push({ ...item, body, image, sliced: true, createdAt: performance.now(), alpha: 1 })
+        const body = Matter.Bodies.rectangle(item.body.position.x + nx * side * 5, item.body.position.y + ny * side * 5, item.width * .62, item.height * .62, {
+          frictionAir: .012, angle: item.body.angle, collisionFilter: { mask: 0 }
+        })
+        Matter.Body.setVelocity(body, {
+          x: item.body.velocity.x + nx * side * 4.8 + side * 1.2,
+          y: Math.max(-7, item.body.velocity.y + 4.5) + ny * side * 2.4
+        })
+        Matter.Body.setAngularVelocity(body, item.body.angularVelocity + side * .12)
+        Matter.Composite.add(engine.world, body); items.push({ ...item, body, image: c, sliced: true, createdAt: performance.now(), alpha: 1 })
       }
       Matter.Composite.remove(engine.world, item.body); items.splice(items.indexOf(item), 1)
-      void makeHalf(1); void makeHalf(-1)
+      makeHalf(1); makeHalf(-1)
     }
 
     const intersects = (item: GameItem, a: Point, b: Point) => {
@@ -103,12 +114,15 @@ export function GameCanvas({ stickers, running, onSlice }: Props) {
       const delta = Math.min(32, now - last); last = now
       if (runningRef.current) {
         Matter.Engine.update(engine, delta)
-        if (now > spawnAt) { void spawn(); spawnAt = now + Math.max(430, 930 - Math.min(420, now / 30000 * 420)) }
+        const activeObjects = items.reduce((count, item) => count + (item.sliced ? 0 : 1), 0)
+        if (now > spawnAt && activeObjects < 5) { spawn(); spawnAt = now + 560 + Math.random() * 150 }
       }
       ctx.clearRect(0, 0, width, height)
       for (let i = items.length - 1; i >= 0; i--) {
         const item = items[i]
-        if (item.body.position.y > height + 180 || item.body.position.x < -180 || item.body.position.x > width + 180 || (item.sliced && now - item.createdAt > 4000)) {
+        const fragmentAge = item.sliced ? now - item.createdAt : 0
+        if (item.sliced) item.alpha = Math.max(0, Math.min(1, 1 - Math.max(0, fragmentAge - 480) / 700))
+        if (item.body.position.y > height + 180 || item.body.position.x < -180 || item.body.position.x > width + 180 || (item.sliced && fragmentAge > 1180)) {
           Matter.Composite.remove(engine.world, item.body); items.splice(i, 1); continue
         }
         ctx.save(); ctx.globalAlpha = item.alpha; ctx.translate(item.body.position.x, item.body.position.y); ctx.rotate(item.body.angle)

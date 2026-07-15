@@ -6,7 +6,7 @@ import { useStickers } from '../app/StickerContext'
 export function AppHeader({ back = false, title, action }: { back?: boolean; title?: string; action?: React.ReactNode }) {
   const navigate = useNavigate()
   const { stickers } = useStickers()
-  return <header className="app-header">
+  return <header className={`app-header ${!back && !title ? 'app-header--brand' : ''}`}>
     <div className="app-header__side">
       {back ? <button className="icon-btn" onClick={() => navigate(-1)} aria-label="뒤로"><ArrowLeft /></button> : <Logo compact />}
     </div>

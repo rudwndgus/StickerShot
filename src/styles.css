@@ -73,3 +73,12 @@ button, img { -webkit-user-select: none; user-select: none; -webkit-touch-callou
 .target-reticle { z-index:2; width:24px; height:24px; border:0; border-radius:0; box-shadow:0 1px 3px #0005; }
 .target-reticle:before { width:24px; height:1.5px; left:0; top:11px; background:#fff; }.target-reticle:after { width:1.5px; height:24px; left:11px; top:0; background:#fff; }
 .capture-guide div { top:18px; padding:7px 11px; border-radius:20px; background:#14141a7a; backdrop-filter:blur(5px); }
+
+/* The brand header uses two real columns; the old three-column grid let the logo overflow into the count chip. */
+.app-header--brand { display:flex; justify-content:space-between; gap:10px; }
+.app-header--brand .app-header__side:first-child { flex:1 1 auto; overflow:hidden; }
+.app-header--brand .app-header__side--right { flex:0 0 auto; }
+.app-header--brand .logo--compact { flex:none; font-size:clamp(19px,5.5vw,23px); }
+.app-header--brand .count-chip { white-space:nowrap; }
+@media(max-width:390px){.app-header--brand .logo--compact{gap:5px}.app-header--brand .logo--compact .logo__mark{width:31px;height:29px}.app-header--brand .count-chip{padding:6px 7px;font-size:11px}.app-header--brand .app-header__side--right{gap:5px}}
+@media(max-width:430px){.app-header--brand .logo--compact{white-space:nowrap}.app-header--brand .count-chip{font-size:0;gap:0;padding:5px}.app-header--brand .count-chip span{font-size:11px}.app-header--brand .app-header__side--right{gap:5px}}
