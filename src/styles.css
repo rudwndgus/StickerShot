@@ -53,3 +53,13 @@ button, img { -webkit-user-select: none; user-select: none; -webkit-touch-callou
 /* Fixed overlays use viewport-aware widths because fixed flex containers include padding differently across Safari versions. */
 .permission-card { width: min(calc(100vw - 40px), 360px); }
 .game-card, .result-card { width: min(calc(100vw - 44px), 350px); }
+
+/* The reticle is the semantic foreground seed used by center-based GrabCut. */
+.target-reticle { position:absolute; left:50%; top:50%; width:52px; height:52px; transform:translate(-50%,-50%); border:2px solid #fff; border-radius:50%; box-shadow:0 0 0 1px #0005,0 0 22px #0004; }
+.target-reticle:before,.target-reticle:after { content:''; position:absolute; background:#fff; box-shadow:0 1px #0005; }
+.target-reticle:before { width:72px; height:1px; left:-12px; top:24px; }.target-reticle:after { width:1px; height:72px; left:24px; top:-12px; }
+.target-reticle b { position:absolute; z-index:2; width:11px; height:11px; left:18px; top:18px; background:var(--yellow); border:2px solid var(--ink); border-radius:50%; box-shadow:0 0 0 3px #fff; }
+.target-reticle small { position:absolute; top:64px; left:50%; transform:translateX(-50%); width:max-content; padding:5px 9px; border-radius:20px; color:#fff; background:#17171dbb; font-size:9px; font-style:normal; font-weight:800; }
+.scan-target { position:absolute; z-index:3; left:50%; top:50%; width:66px; height:66px; transform:translate(-50%,-50%); border:2px solid var(--yellow); border-radius:50%; box-shadow:0 0 18px #ffe05a77; }
+.scan-target span { position:absolute; width:10px; height:10px; border-radius:50%; background:var(--yellow); left:26px; top:26px; box-shadow:0 0 0 5px #fff5; animation:pulse 1s infinite; }
+.scan-target small { position:absolute; top:75px; left:50%; transform:translateX(-50%); width:max-content; padding:5px 9px; border-radius:20px; background:#17171dcc; color:#fff; font-size:9px; font-weight:800; }

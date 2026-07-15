@@ -27,8 +27,14 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        globIgnores: ['**/opencv-*.js'],
         cleanupOutdatedCaches: true,
-        navigateFallback: 'index.html'
+        navigateFallback: 'index.html',
+        runtimeCaching: [{
+          urlPattern: /opencv-.*\.js$/,
+          handler: 'CacheFirst',
+          options: { cacheName: 'stickershot-vision-v1', expiration: { maxEntries: 2, maxAgeSeconds: 60 * 60 * 24 * 30 } }
+        }]
       },
       devOptions: { enabled: true }
     })

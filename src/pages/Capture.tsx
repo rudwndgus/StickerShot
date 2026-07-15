@@ -57,7 +57,7 @@ export function Capture() {
     {!cameraReady && <div className="camera-fallback"><CameraIcon size={64} /><b>카메라를 준비하는 중</b><span>허용하지 않아도 보관함의 사진을 쓸 수 있어요.</span></div>}
     <button className="capture-close" onClick={() => navigate('/')} aria-label="닫기"><X /></button>
     <button className="capture-flip" onClick={() => setFacingMode((value) => value === 'environment' ? 'user' : 'environment')} aria-label="카메라 전환"><RefreshCw /></button>
-    <div className="capture-guide"><span /><div><b>물건 하나만 프레임 안에 놓아주세요</b><small>단순한 배경에서 더 깔끔하게 만들어져요</small></div></div>
+    <div className="capture-guide"><span /><i className="target-reticle"><b /><small>이 점에 물건을 맞춰주세요</small></i><div><b>가운데 점에 물건 하나를 맞춰주세요</b><small>점에 가장 가까운 물체를 스티커로 만들어요</small></div></div>
     <div className="capture-controls">
       <button className="gallery-btn" onClick={() => fileRef.current?.click()}><Images /><small>보관함</small></button>
       <button className="shutter" onClick={shoot} aria-label="촬영"><span /></button>

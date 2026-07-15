@@ -24,7 +24,7 @@ export function canvasToBlob(canvas: HTMLCanvasElement, type = 'image/png', qual
  * corner samples, then flood-fills only matching pixels connected to an edge.
  * This avoids erasing similarly coloured details enclosed by the foreground.
  */
-export async function removeBackground(url: string, options: RemovalOptions): Promise<HTMLCanvasElement> {
+async function removeBackgroundByEdgeColor(url: string, options: RemovalOptions): Promise<HTMLCanvasElement> {
   const image = await loadImage(url)
   const scale = Math.min(1, MAX_SIDE / Math.max(image.naturalWidth, image.naturalHeight))
   const width = Math.max(1, Math.round(image.naturalWidth * scale))
@@ -77,6 +77,16 @@ export async function removeBackground(url: string, options: RemovalOptions): Pr
   }
   ctx.putImageData(frame, 0, 0)
   return trimTransparent(canvas)
+}
+
+export async function removeBackground(url: string, options: RemovalOptions): Promise<HTMLCanvasElement> {
+  try {
+    const { removeBackgroundFromCenter } = await import('./centerGrabCut')
+    return trimTransparent(await removeBackgroundFromCenter(url, options.feather), 14)
+  } catch (error) {
+    console.warn('중앙 물체 분할을 사용할 수 없어 색상 분리로 전환합니다.', error)
+    return removeBackgroundByEdgeColor(url, options)
+  }
 }
 
 export function trimTransparent(source: HTMLCanvasElement, padding = 10) {

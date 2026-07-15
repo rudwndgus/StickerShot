@@ -3,7 +3,7 @@ import { Check, ScanLine, Sparkles } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { removeBackground, canvasToBlob } from '../services/backgroundRemoval/removeBackground'
 
-const stages = ['이미지 불러오는 중', '물건 탐색 중', '윤곽 분석 중', '배경과 물체 분리 중', '스티커 다듬는 중']
+const stages = ['인식 엔진 준비 중', '중앙 물체 고정 중', '물체 윤곽 학습 중', '배경과 물체 분리 중', '가장자리 다듬는 중']
 
 export function Scan() {
   const navigate = useNavigate()
@@ -31,6 +31,7 @@ export function Scan() {
     <div className="scan-image-wrap">
       <img src={sourceUrl} alt="분석할 사진" />
       <div className={`scan-line ${done ? 'scan-line--done' : ''}`}><ScanLine /></div>
+      <div className="scan-target"><span /><small>이 물체를 찾는 중</small></div>
       <i className="focus-corner focus-corner--a" /><i className="focus-corner focus-corner--b" /><i className="focus-corner focus-corner--c" /><i className="focus-corner focus-corner--d" />
       <div className="scan-dots"><i /><i /><i /><i /><i /><i /></div>
     </div>
